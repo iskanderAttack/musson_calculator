@@ -140,8 +140,18 @@ plt.tight_layout()
 st.pyplot(fig)
 
 # --- Выбор лучшей модели ---
-suitable_models = [r for r in results if r['power']>=heat_loss_kw*1.2]
+suitable_models = [r for r in results if r['power'] >= heat_loss_kw * 1.2]
 if suitable_models:
     best_model = min(suitable_models, key=lambda x: x['price'])
     fill_coeff = WOOD_TYPES[wood_type]['fill_coeff']
-    max
+    max_hours = WOOD_TYPES[wood_type]['max_burn_hours']
+
+    # Характеристики выбранной модели
+    st.subheader("💡 Рекомендуемая модель")
+    st.success(f"**{best_model['model']}** — {best_model['price']:,} руб.".replace(',', ' '))
+
+    st.write("**Характеристики выбранной модели:**")
+    st.write(f"• Мощность: {best_model['power']:.1f} кВт (требуется {heat_loss_kw*1.2:.1f} кВт)")
+    st.write(f"• Время горения одной закладки: до {min(burn_hours, max_hours)} часов")
+    st.write(f"• Расход топлива за закладку: {best_model['wood_per_load']:.1f} кг")
+    st.write(f"• Примерная стоимость: {best_model['price']:,} руб.".replace(',', ' '))
