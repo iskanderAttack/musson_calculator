@@ -34,7 +34,6 @@ WOOD_TYPES = {
 }
 
 # --- Функции расчета ---
-
 def calc_heat_loss(area_m2, height_m, wall_thickness_m, material, t_in, t_out, windows_m2=0, doors_m2=0, roof_insulation=True):
     volume_m3 = area_m2 * height_m
     lambda_wall = MATERIALS[material]
@@ -49,20 +48,15 @@ def calc_heat_loss(area_m2, height_m, wall_thickness_m, material, t_in, t_out, w
     total_w = q_walls + q_windows + q_doors + q_roof + q_vent
     return total_w / 1000
 
-
 def musson_power(volume_l, fill_fraction, wood_type, efficiency, burn_hours):
     vol_m3 = volume_l / 1000
-    filled_vol_m3 = vol_m3 * fill_fraction
+    filled_vol_m3 = vol_m3 * fill_fraction * WOOD_TYPES[wood_type]["fill_coeff"]
     m_wood = filled_vol_m3 * WOOD_TYPES[wood_type]["density"]
     q_fuel = m_wood * WOOD_TYPES[wood_type]["q"]
     q_kwh = q_fuel / 3.6
     useful_kwh = q_kwh * efficiency
     p_kw = useful_kwh / burn_hours
     return useful_kwh, p_kw, m_wood
-
-
-def calculate_fuel_consumption(daily_heat_loss_kwh, wood_energy_kwh_per_kg):
-    return daily_heat_loss_kwh / wood_energy_kwh_per_kg
 
 # --- Streamlit UI ---
 st.title("🔥 Калькулятор подбора пиролизной печи Муссон")
@@ -103,7 +97,6 @@ working_day_hours = st.sidebar.selectbox("Продолжительность р�
 
 # --- Расчёт ---
 heat_loss_kw = calc_heat_loss(area_m2, height_m, wall_thickness, material, t_in, t_out, windows_m2, doors_m2, roof_insulation)
-volume_m3 = area_m2 * height_m
 
 # --- Сравнение моделей ---
 results = []
@@ -146,7 +139,6 @@ if suitable_models:
     fill_coeff = WOOD_TYPES[wood_type]['fill_coeff']
     max_hours = WOOD_TYPES[wood_type]['max_burn_hours']
 
-    # Характеристики выбранной модели
     st.subheader("💡 Рекомендуемая модель")
     st.success(f"**{best_model['model']}** — {best_model['price']:,} руб.".replace(',', ' '))
 
@@ -154,4 +146,34 @@ if suitable_models:
     st.write(f"• Мощность: {best_model['power']:.1f} кВт (требуется {heat_loss_kw*1.2:.1f} кВт)")
     st.write(f"• Время горения одной закладки: до {min(burn_hours, max_hours)} часов")
     st.write(f"• Расход топлива за закладку: {best_model['wood_per_load']:.1f} кг")
-    st.write(f"• Примерная стоимость: {best_model['price']:,} руб.".replace(',', ' '))
+
+    # --- Расход топлива ---
+    num_loads = math.ceil(working_day_hours / min(burn_hours, max_hours))
+    daily_consumption = best_model['wood_per_load'] * num_loads
+    monthly_consumption = daily_consumption * 22  # 22 рабочих дня
+    cost_per_kg = wood_price_m3 / (WOOD_TYPES[wood_type]["density"] * 1)  # руб/кг
+    daily_cost = daily_consumption * cost_per_kg
+    monthly_cost = monthly_consumption * cost_per_kg
+
+    st.write("\n**Расход топлива за рабочий день:**")
+    st.write(f"• Продолжительность рабочего дня: {working_day_hours} ч")
+    st.write(f"• Количество закладок: {num_loads}")
+    st.write(f"• Расход топлива в день: {daily_consumption:.1f} кг")
+    st.write(f"• Расход топлива в месяц (22 рабочих дня): {monthly_consumption:.0f} кг")
+
+    st.write("\n**Экономика отопления:**")
+    st.write(f"• Стоимость отопления в день: {daily_cost:.0f} руб.")
+    st.write(f"• Стоимость отопления в месяц: {monthly_cost:.0f} руб.")
+
+else:
+    st.error("❌ Ни одна модель не покрывает теплопотери при текущих настройках")
+
+# --- Советы ---
+with st.expander("💡 Советы по эффективной эксплуатации"):
+    st.write("""
+    1. **Качество дров**: Используйте сухие дрова (влажность менее 20%)
+    2. **Оптимальная загрузка**: Не заполняйте топку менее чем на 80%
+    3. **Регулярное обслуживание**: Чистите дымоход и топку раз в сезон
+    4. **Контролируйте температурный режим**: избегайте работы на минимальной мощности длительное время
+    5. **Утепление помещения**: Утепление стен и окон значительно снизит расход дров
+    """)
