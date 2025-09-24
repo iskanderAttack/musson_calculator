@@ -120,51 +120,28 @@ display_df.columns = ["Модель","Мощность (кВт)","Энергия
 display_df = display_df.round({"Мощность (кВт)":1,"Энергия (кВт·ч)":0,"Дров за закладку (кг)":1})
 st.dataframe(display_df, use_container_width=True)
 
+# --- Графики ---
+fig, (ax1, ax2) = plt.subplots(1,2,figsize=(12,5))
+models = [r['model'] for r in results]
+powers = [r['power'] for r in results]
+colors = ['green' if p >= heat_loss_kw*1.2 else 'red' for p in powers]
+ax1.bar(models, powers, color=colors, alpha=0.7)
+ax1.axhline(y=heat_loss_kw*1.2, color='blue', linestyle='--', label=f'Требуется: {heat_loss_kw*1.2:.1f} кВт')
+ax1.set_ylabel('Мощность, кВт')
+ax1.set_title('Сравнение мощности моделей')
+ax1.legend()
+ax1.tick_params(axis='x', rotation=45)
+energies = [r['energy'] for r in results]
+ax2.bar(models, energies, color='orange', alpha=0.7)
+ax2.set_ylabel('Энергия за закладку, кВт·ч')
+ax2.set_title('Энергия от одной закладки')
+ax2.tick_params(axis='x', rotation=45)
+plt.tight_layout()
+st.pyplot(fig)
+
 # --- Выбор лучшей модели ---
-suitable_models = [r for r in results if r["power"] >= heat_loss_kw*1.2]
+suitable_models = [r for r in results if r['power']>=heat_loss_kw*1.2]
 if suitable_models:
-    best_model = min(suitable_models, key=lambda x: x["price"])
-    # Ограничение по топке и времени
-    fill_coeff = WOOD_TYPES[wood_type]["fill_coeff"]
-    max_wood_kg = best_model["volume_l"] * WOOD_TYPES[wood_type]["density"] / 1000 * fill_coeff
-    if best_model["wood_per_load"] > max_wood_kg:
-        st.warning(f"Выбранный объём топлива ({best_model['wood_per_load']:.1f} кг) превышает максимальный допустимый ({max_wood_kg:.1f} кг). Скорректировано.")
-        best_model["wood_per_load"] = max_wood_kg
-
-    max_burn = WOOD_TYPES[wood_type]["max_burn_hours"]
-    if burn_hours > max_burn:
-        st.warning(f"Выбрано слишком большое время горения для этого топлива. Максимум {max_burn} часов.")
-        burn_hours = max_burn
-
-    num_loads = working_day_hours / burn_hours
-    daily_wood_kg = best_model["wood_per_load"] * num_loads
-    monthly_wood_kg = daily_wood_kg * 22
-    daily_cost = daily_wood_kg * wood_price_m3 / 1000
-    monthly_cost = daily_cost * 22
-
-    st.success(f"**Рекомендуемая модель: {best_model['model']} — {best_model['price']:,} руб.**".replace(',', ' '))
-
-    st.write("**Характеристики выбранной модели:**")
-    st.write(f"• Мощность: {best_model['power']:.1f} кВт (требуется {heat_loss_kw*1.2:.1f} кВт)")
-    st.write(f"• Время горения одной закладки: до {burn_hours} часов")
-    st.write(f"• Расход топлива за одну закладку: {best_model['wood_per_load']:.1f} кг")
-    st.write(f"• Примерная стоимость {best_model['model']}: {best_model['price']:,} руб.")
-
-    st.write("**Расход топлива за рабочий день:**")
-    st.write(f"• Продолжительность рабочего дня: {working_day_hours} часов")
-    st.write(f"• Количество закладок: {num_loads:.0f}")
-    st.write(f"• Расход топлива в день: {daily_wood_kg:.1f} кг")
-    st.write(f"• Расход топлива в месяц (22 рабочих дня): {monthly_wood_kg:.0f} кг")
-
-    st.write("**Экономика отопления:**")
-    st.write(f"• Стоимость отопления в день: {daily_cost:.0f} руб.")
-    st.write(f"• Стоимость отопления в месяц: {monthly_cost:.0f} руб.")
-
-# --- Советы для производственных помещений ---
-with st.expander("💡 Советы по эффективной эксплуатации для печей производственных помещений"):
-    st.write("""
-    1. Используйте качественные сухие дрова или отходы древесины (влажность менее 20%).
-    2. Не заполняйте топку более допустимого объема (80% для дров, 70% для отходов).
-    3. Регулярно чистите дымоход и топку.
-    4. Контролируйте температурный режим, избегайте работы на минимальной мощности длительное
-    """)
+    best_model = min(suitable_models, key=lambda x: x['price'])
+    fill_coeff = WOOD_TYPES[wood_type]['fill_coeff']
+    max
